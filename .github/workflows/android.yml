@@ -94,9 +94,9 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
 
+      # From the repo root: the CLI looks for tauri.conf.json below the working directory.
       - name: Build APKs
-        working-directory: ui
-        run: pnpm tauri android build --apk --split-per-abi --target aarch64 --target armv7 --target x86_64
+        run: ui/node_modules/.bin/tauri android build --apk --split-per-abi --target aarch64 --target armv7 --target x86_64
 
       - name: Collect
         run: |

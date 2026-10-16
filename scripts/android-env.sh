@@ -2,7 +2,7 @@
 # Source this before building the Android app:
 #
 #     source scripts/android-env.sh
-#     cd ui && pnpm tauri android build --apk --target aarch64
+#     ui/node_modules/.bin/tauri android build --apk --target aarch64   # from the repo root
 #
 # It finds the SDK and NDK and sets what the Tauri CLI does not: rquickjs (under rustypipe) has no
 # pregenerated bindings for Android and runs bindgen at build time, which needs the NDK's sysroot.

@@ -56,11 +56,12 @@ QuickJS bindings for rustypipe at build time).
 ```sh
 rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
 source scripts/android-env.sh          # finds the SDK/NDK, sets the bindgen sysroot
-cd ui && pnpm install
+(cd ui && pnpm install)
 
-pnpm tauri android dev                 # run on a connected device or emulator
-pnpm tauri android build --apk --target aarch64            # release APK, arm64
-pnpm tauri android build --apk --debug --target aarch64    # debug APK
+# From the repo root: the Tauri CLI looks for tauri.conf.json below the working directory.
+ui/node_modules/.bin/tauri android dev                 # run on a connected device or emulator
+ui/node_modules/.bin/tauri android build --apk --target aarch64            # release APK, arm64
+ui/node_modules/.bin/tauri android build --apk --debug --target aarch64    # debug APK
 ```
 
 APKs land in `src-tauri/gen/android/app/build/outputs/apk/`.
