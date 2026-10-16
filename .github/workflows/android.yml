@@ -36,11 +36,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
+      # The runner image ships the SDK (ANDROID_HOME) with a current cmdline-tools. Not
+      # android-actions/setup-android: it insists on the long-removed `tools` package and fails.
       - name: Install NDK and platform
         run: |
-          sdkmanager --install "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;37.0.0"
+          sdkmanager=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n 1)
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          "$sdkmanager" --install "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;37.0.0"
           echo "NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
 
       - uses: dtolnay/rust-toolchain@stable
