@@ -1,5 +1,12 @@
 //! Limusic Tauri app. Wires transport + player + db + orchestrator behind the command boundary.
 
+// The Android build compiles the whole app with the desktop-only paths (windows, tray, hotkeys,
+// hidden webviews, the updater) switched off at their entry points, which leaves their helpers
+// unreferenced there. The desktop build keeps the full lint.
+#![cfg_attr(mobile, allow(dead_code, unused_imports))]
+
+#[cfg(target_os = "android")]
+mod android;
 mod appicon;
 mod audioproxy;
 mod blocked;
@@ -20,13 +27,40 @@ mod local;
 mod lyrics;
 mod matugen;
 mod media;
+#[cfg(desktop)]
 mod mini;
+/// The mini player is a second always-on-top window, which a phone does not have. The UI hides its
+/// button on Android; these answer anything that still asks.
+#[cfg(mobile)]
+mod mini {
+    use tauri::AppHandle;
+
+    pub const LABEL: &str = "mini";
+
+    pub fn open(_app: &AppHandle) -> Result<(), String> {
+        Err("The mini player is not available on Android".into())
+    }
+
+    pub fn set_compact(_app: &AppHandle, _compact: bool) -> Result<(), String> {
+        Err("The mini player is not available on Android".into())
+    }
+
+    pub fn save_position(_app: &AppHandle) {}
+
+    pub fn close(_app: &AppHandle) {}
+}
 #[cfg(target_os = "linux")]
 mod nativevideo;
 #[cfg(windows)]
 #[path = "nativevideo_windows.rs"]
 mod nativevideo;
+#[cfg(not(target_os = "android"))]
 mod notify;
+/// Android: the player service's media notification already shows each new track.
+#[cfg(target_os = "android")]
+mod notify {
+    pub fn track_changed(_app: &tauri::AppHandle, _title: &str, _artists: &str, _even: bool) {}
+}
 mod orchestrator;
 mod potoken;
 mod romanize;
@@ -229,6 +263,7 @@ pub(crate) fn tune_webview_labelled(app: &tauri::AppHandle, label: &str, media: 
 ///
 /// Wayland gives the app no real position and ignores `center`, which is fine: the compositor
 /// places the window there, so the bug cannot happen.
+#[cfg(desktop)]
 fn keep_on_screen(w: &tauri::WebviewWindow) {
     let (Ok(p), Ok(size)) = (w.outer_position(), w.outer_size()) else { return };
     if mini::on_a_display(w, p, size) {
@@ -247,7 +282,6 @@ fn keep_on_screen(w: &tauri::WebviewWindow) {
     }
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Logs to stdout **and** to `<app data>/limusic.log`, truncated each launch (the previous run is
 /// kept as `limusic.log.1`).
 ///
@@ -408,7 +442,8 @@ fn should_start_minimized(db: &Db) -> bool {
 
 /// Tauri entry point. Applies the platform boot fixes (open-fd limit, NVIDIA/WebKit env), restores
 /// the persisted session, wires every command and plugin, and runs the event loop. context/01
-/// §startup.
+/// §startup. On Android this is what the activity loads (`mobile_entry_point`).
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Must happen before any webview exists: the limit is inherited by the web processes WebKit
     // forks, and cannot be raised for them afterwards.
@@ -497,6 +532,7 @@ pub fn run() {
     // the two fight over it, which is what the guard exists to prevent:
     //
     //     LIMUSIC_MULTI=1 XDG_DATA_HOME=/tmp/limusic-b ./target/debug/limusic-app
+    #[cfg(desktop)]
     if std::env::var_os("LIMUSIC_MULTI").is_none() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             tray::show_main(app);
@@ -505,6 +541,47 @@ pub fn run() {
                 let _ = app.emit_to("main", "open-link", &args[1..]);
             }
         }));
+    }
+
+    // The plugins that only exist on desktop. Android updates through its store or a new APK, has
+    // no login items, no window geometry to restore and no global shortcuts.
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                Some(vec!["--autostart"]),
+            ))
+            // Reopen at the size/position the window was left at. Only "main": the mini widget is
+            // fixed-size and the login/cipher/PoToken webviews are windows too. Size, position and
+            // maximized only — VISIBLE would restore a window hidden to the tray as invisible, and
+            // DECORATIONS would fight the custom titlebar.
+            .plugin(
+                tauri_plugin_window_state::Builder::new()
+                    .with_state_flags(
+                        tauri_plugin_window_state::StateFlags::SIZE
+                            | tauri_plugin_window_state::StateFlags::POSITION
+                            | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                    )
+                    .with_filter(|label| label == "main")
+                    .build(),
+            )
+            .plugin(
+                tauri_plugin_global_shortcut::Builder::new()
+                    .with_handler(|app, shortcut, event| {
+                        if let Some(mgr) = app.try_state::<Arc<hotkeys::HotkeysManager>>() {
+                            mgr.handle_event(app, shortcut, event.state());
+                        }
+                    })
+                    .build(),
+            );
+    }
+
+    // The Kotlin side: ExoPlayer in a media session service (android.rs).
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.plugin(android::init());
     }
 
     builder
@@ -516,7 +593,6 @@ pub fn run() {
                 .body(webview::HARNESS_HTML.as_bytes())
                 .expect("static harness response")
         })
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         // Folder picker for the local-music library (local.rs).
         .plugin(tauri_plugin_dialog::init())
@@ -525,33 +601,6 @@ pub fn run() {
         // Fedora every copy button in the app silently did nothing. The OS clipboard from the app
         // process has no such gate. See ui/src/lib/clipboard.ts.
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--autostart"]),
-        ))
-        // Reopen at the size/position the window was left at. Only "main": the mini widget is
-        // fixed-size and the login/cipher/PoToken webviews are windows too. Size, position and
-        // maximized only — VISIBLE would restore a window hidden to the tray as invisible, and
-        // DECORATIONS would fight the custom titlebar.
-        .plugin(
-            tauri_plugin_window_state::Builder::new()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::SIZE
-                        | tauri_plugin_window_state::StateFlags::POSITION
-                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-                )
-                .with_filter(|label| label == "main")
-                .build(),
-        )
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, shortcut, event| {
-                    if let Some(mgr) = app.try_state::<Arc<hotkeys::HotkeysManager>>() {
-                        mgr.handle_event(app, shortcut, event.state());
-                    }
-                })
-                .build(),
-        )
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -618,7 +667,10 @@ pub fn run() {
                 let w =
                     http::proxied(tauri::WebviewWindowBuilder::from_config(&handle, config)?)
                         .build()?;
+                #[cfg(desktop)]
                 keep_on_screen(&w);
+                #[cfg(mobile)]
+                let _ = w;
             }
             let cookie = db.get_setting("session_cookie").filter(|s| !s.is_empty());
             let data_sync_id = state::persisted_data_sync_id(&db);
@@ -647,7 +699,7 @@ pub fn run() {
             it.set_hide_videos(db.get_setting("hide_videos").as_deref() == Some("true"));
             // Read while `db` is still ours; the window is decorated further down, once the rest of
             // the setup that could fail is out of the way.
-            #[cfg_attr(target_os = "macos", allow(unused_variables))]
+            #[cfg_attr(any(target_os = "macos", mobile), allow(unused_variables))]
             let system_titlebar = db.get_setting("system_titlebar").as_deref() == Some("true");
             it.set_blocked(blocked::block_list(&db));
             let clients = Clients::bundled();
@@ -763,6 +815,7 @@ pub fn run() {
             // pointing at nothing. So an installed build repoints an existing entry at itself.
             // Only an existing one: `is_enabled` is false after a Task Manager disable on Windows,
             // and that choice is the user's.
+            #[cfg(desktop)]
             if !tauri::is_dev() {
                 use tauri_plugin_autostart::ManagerExt;
                 let al = app.autolaunch();
@@ -939,7 +992,7 @@ pub fn run() {
             // is created undecorated, so this is the one place that reverses it; macOS never gets
             // here, its traffic lights come from `tauri.macos.conf.json`. Done before the SPA shows
             // the window, so the frame is already there rather than popping in.
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(not(any(target_os = "macos", mobile)))]
             if system_titlebar {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.set_decorations(true);

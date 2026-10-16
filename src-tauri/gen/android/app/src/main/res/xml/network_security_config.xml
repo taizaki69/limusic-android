@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext only to this device. ExoPlayer streams from the app's own loopback audio proxy
+  (src-tauri/src/audioproxy.rs), which is plain http on 127.0.0.1; everything else is https.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

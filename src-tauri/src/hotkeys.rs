@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
+#[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 use crate::db::Db;
@@ -73,6 +74,7 @@ pub struct HotkeyRegisterResult {
 /// Parse a stored binding ("Ctrl+Alt+Space") with the plugin's own parser. A bare key is refused:
 /// a global grab on Space or a letter would take that key from every app on the desktop. F-keys
 /// are the exception, nothing types with them.
+#[cfg(desktop)]
 pub fn parse_shortcut(input: &str) -> Result<Shortcut, String> {
     let shortcut: Shortcut = input.trim().parse().map_err(|e| format!("{e}"))?;
     let modified = shortcut.mods.intersects(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SUPER);
@@ -89,15 +91,33 @@ pub fn parse_shortcut(input: &str) -> Result<Shortcut, String> {
 /// Manages hotkey registration state and event dispatching.
 pub struct HotkeysManager {
     pub config: Mutex<HotkeysConfig>,
+    #[cfg(desktop)]
     pub registered: Mutex<HashMap<Shortcut, HotkeyAction>>,
 }
 
 impl HotkeysManager {
     pub fn new(config: HotkeysConfig) -> Self {
-        Self { config: Mutex::new(config), registered: Mutex::new(HashMap::new()) }
+        Self {
+            config: Mutex::new(config),
+            #[cfg(desktop)]
+            registered: Mutex::new(HashMap::new()),
+        }
     }
 
     /// Register all shortcuts from `new_config`, unregistering previous ones.
+    /// Android has no global shortcuts (the media notification and headset buttons cover it), so
+    /// there the config is only remembered.
+    #[cfg(mobile)]
+    pub fn apply_config(
+        &self,
+        _app: &AppHandle,
+        new_config: HotkeysConfig,
+    ) -> HotkeyRegisterResult {
+        *self.config.lock().unwrap() = new_config.clone();
+        HotkeyRegisterResult { success: true, config: new_config, errors: HashMap::new() }
+    }
+
+    #[cfg(desktop)]
     pub fn apply_config(&self, app: &AppHandle, new_config: HotkeysConfig) -> HotkeyRegisterResult {
         let mut errors = HashMap::new();
         let mut new_registered = HashMap::new();
@@ -157,6 +177,7 @@ impl HotkeysManager {
     }
 
     /// Dispatch triggered shortcut to its bound action.
+    #[cfg(desktop)]
     pub fn handle_event(&self, app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
         if state != ShortcutState::Pressed {
             return;

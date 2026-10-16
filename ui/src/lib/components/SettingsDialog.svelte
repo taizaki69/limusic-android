@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mobile } from '$lib/platform';
 	import { tick, untrack, type Snippet } from 'svelte';
 	import { save } from '@tauri-apps/plugin-dialog';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
@@ -59,7 +60,8 @@
 		| 'scrobbling'
 		| 'data'
 		| 'about';
-	const TABS = $derived<{ id: TabId; label: string; hint: string; icon: typeof Settings02Icon }[]>([
+	type Tab = { id: TabId; label: string; hint: string; icon: typeof Settings02Icon };
+	const TABS = $derived(([
 		{ id: 'general', label: t('settings.tabs.general'), hint: t('settings.tabs.general_hint'), icon: Settings02Icon },
 		{ id: 'themes', label: t('settings.tabs.themes'), hint: t('settings.tabs.themes_hint'), icon: PaintBoardIcon },
 		{ id: 'playback', label: t('settings.tabs.playback'), hint: t('settings.tabs.playback_hint'), icon: PlayCircleIcon },
@@ -68,7 +70,8 @@
 		{ id: 'scrobbling', label: t('settings.tabs.scrobbling'), hint: t('settings.tabs.scrobbling_hint'), icon: LastFmIcon },
 		{ id: 'data', label: t('settings.tabs.data'), hint: t('settings.tabs.data_hint'), icon: Database02Icon },
 		{ id: 'about', label: t('settings.tabs.about'), hint: t('settings.tabs.about_hint'), icon: InformationCircleIcon }
-	]);
+		// Android: no global shortcuts and no Discord client to talk to.
+	] satisfies Tab[] as Tab[]).filter((tb) => !mobile || (tb.id !== 'hotkeys' && tb.id !== 'discord')));
 
 	// Shared shapes for the settings rows. Kept as strings so the markup below stays readable and
 	// every group looks identical without a wrapper component per row.
@@ -471,18 +474,27 @@
 	>
 		<Dialog.Description class="sr-only">{t('settings.title')}</Dialog.Description>
 
-		<div class="flex min-w-0 h-[min(38rem,80vh)]">
+		<!-- On a phone the rail turns into a strip of tabs across the top. -->
+		<div class="flex min-w-0 {mobile ? 'h-[85vh] flex-col' : 'h-[min(38rem,80vh)]'}">
 			<!-- Tab rail -->
-			<nav class="flex w-52 shrink-0 flex-col border-r bg-muted/40 p-3">
-				<Dialog.Title class="px-3 pt-1 pb-4 font-heading text-base font-semibold">
+			<nav
+				class="flex shrink-0 bg-muted/40 {mobile
+					? 'w-full overflow-x-auto border-b p-2 pr-12'
+					: 'w-52 flex-col border-r p-3'}"
+			>
+				<Dialog.Title
+					class="px-3 pt-1 pb-4 font-heading text-base font-semibold {mobile ? 'sr-only' : ''}"
+				>
 					{t('settings.title')}
 				</Dialog.Title>
-				<div class="flex flex-col gap-0.5">
+				<div class="flex gap-0.5 {mobile ? 'flex-row' : 'flex-col'}">
 					{#each TABS as tb (tb.id)}
 						<button
 							onclick={() => (tab = tb.id)}
 							aria-current={tab === tb.id}
-							class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors {tab ===
+							class="flex {mobile
+								? 'shrink-0'
+								: 'w-full'} cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors {tab ===
 							tb.id
 								? 'bg-background text-foreground shadow-sm ring-1 ring-border/70'
 								: 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'}"
@@ -497,7 +509,7 @@
 						</button>
 					{/each}
 				</div>
-				{#if version}
+				{#if version && !mobile}
 					<span class="mt-auto px-3 pb-1 text-[11px] text-muted-foreground">v{version}</span>
 				{/if}
 			</nav>
@@ -527,6 +539,7 @@
 					{:else if tab === 'general'}
 						<!-- The shortcuts list has no other entry point in the chrome. Closing settings
 						     first: two stacked dialogs would trap focus in the wrong one. -->
+						{#if !mobile}
 						<button
 							type="button"
 							class="mb-5 inline-flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -541,6 +554,7 @@
 									''}</span
 							>
 						</button>
+						{/if}
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.language')}</h3>
 							<div class={CARD}>
@@ -562,6 +576,8 @@
 								})}
 							</div>
 						</section>
+						<!-- Tray, login items, desktop notifications and the window frame: desktop only. -->
+						{#if !mobile}
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.system')}</h3>
 							<div class={CARD}>
@@ -603,6 +619,7 @@
 								{/if}
 							</div>
 						</section>
+						{/if}
 					{:else if tab === 'playback'}
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.audio')}</h3>
@@ -623,6 +640,8 @@
 									desc: t('settings.playback.autoplay_hint'),
 									control: autoplaySwitch
 								})}
+								<!-- Crossfade needs mpv's second deck; ExoPlayer on Android stays gapless. -->
+								{#if !mobile}
 								{@render row({
 									title: t('settings.playback.crossfade'),
 									badge: t('settings.themes.experimental'),
@@ -639,6 +658,7 @@
 										control: crossfadeSlider,
 										tall: true
 									})}
+								{/if}
 								{/if}
 								{@render row({
 									title: t('settings.playback.prevent_duplicates'),
@@ -663,6 +683,8 @@
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.video')}</h3>
 							<div class={CARD}>
+								<!-- Music videos are a desktop feature (mpv draws them). -->
+								{#if !mobile}
 								{@render row({
 									title: t('settings.playback.music_videos'),
 									badge: t('settings.themes.experimental'),
@@ -685,6 +707,7 @@
 										control: ambientSwitch,
 										tall: true
 									})}
+								{/if}
 								{/if}
 								{@render row({
 									title: t('settings.playback.hide_videos'),
@@ -768,6 +791,8 @@
 							</div>
 						</section>
 
+						<!-- Android updates by installing a new APK; there is no updater to drive. -->
+						{#if !mobile}
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.updates')}</h3>
 							<div class={CARD}>
@@ -797,6 +822,7 @@
 								{/if}
 							</div>
 						</section>
+						{/if}
 
 						<section class={GROUP}>
 							<h3 class={LABEL}>{t('settings.sections.report')}</h3>

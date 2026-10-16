@@ -51,6 +51,7 @@
 	import TrackMenu from './TrackMenu.svelte';
 	import CommentsView from './CommentsView.svelte';
 	import Ambient from './Ambient.svelte';
+	import { mobile } from '$lib/platform';
 
 	// Off in settings, this view drops its tabs and the queue/lyrics panels stay in charge of both
 	// (see +layout): they paint above this (z-30 over z-20), so all this needs is to hand back the
@@ -59,7 +60,7 @@
 	// `lyricsOpen` is the lyrics/comments slot: the comments panel takes the lyrics' place, so either
 	// one open counts as that one panel.
 	let { queueOpen, lyricsOpen }: { queueOpen: boolean; lyricsOpen: boolean } = $props();
-	const tabbed = $derived(appearance.tabbedPlayer);
+	const tabbed = $derived(appearance.tabbedPlayer && !mobile);
 	// The two layouts (Settings > Appearance > New player layout). One component, so both share
 	// every behaviour below: the video hole, the backdrop click, the wheel volume, Esc. Only the
 	// markup differs. Off is the original, opt-in while people get used to the new one.
@@ -463,11 +464,13 @@
 	onpointerup={(e) => (releasedKeep = keeps(e.target))}
 	onclick={onBackdropClick}
 	data-np-view
-	class="absolute inset-y-0 left-16 right-0 z-20 flex overflow-hidden inert:bg-background {video.hole
+	class="absolute inset-y-0 right-0 z-20 flex overflow-hidden inert:bg-background {video.hole
 		? ''
-		: 'bg-background'} {stage ? '' : 'justify-center px-4 py-4 sm:px-6 sm:py-6 lg:px-10'} {ui.sidebarCollapsed
-		? ''
-		: 'lg:left-60'} {inset}"
+		: 'bg-background'} {stage ? '' : 'justify-center px-4 py-4 sm:px-6 sm:py-6 lg:px-10'} {mobile
+		? 'left-0'
+		: ui.sidebarCollapsed
+			? 'left-16'
+			: 'left-16 lg:left-60'} {inset}"
 >
 	<!-- The ambient light (Settings > Video): the video's colours spilling into the view around it. Not
 	     under theater mode, which covers this view. -->

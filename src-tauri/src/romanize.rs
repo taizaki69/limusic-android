@@ -22,8 +22,10 @@
 //! Runs on every `get_lyrics` answer and is never cached, so a better engine applies to songs that
 //! were cached before it.
 
+#[cfg(not(target_os = "android"))]
 use std::sync::LazyLock;
 
+#[cfg(not(target_os = "android"))]
 use lindera::{DictionaryKind, DictionaryLoader, Mode, Tokenizer};
 use pinyin::ToPinyin;
 use wana_kana::ConvertJapanese;
@@ -137,6 +139,7 @@ fn chinese(run: &str) -> String {
 
 /// IPADIC, embedded. The dictionary is ~45 MB of read-only data in the binary (~6 MB compressed in
 /// the installers), paged in only when a Japanese song is shown.
+#[cfg(not(target_os = "android"))]
 static TOKENIZER: LazyLock<Option<Tokenizer>> = LazyLock::new(|| {
     DictionaryLoader::load_dictionary_from_kind(DictionaryKind::IPADIC)
         .map(|d| Tokenizer::new(d, None, Mode::Normal))
@@ -144,6 +147,7 @@ static TOKENIZER: LazyLock<Option<Tokenizer>> = LazyLock::new(|| {
         .ok()
 });
 
+#[cfg(not(target_os = "android"))]
 struct Morph {
     surface: String,
     pos: String,
@@ -152,6 +156,18 @@ struct Morph {
     reading: String,
 }
 
+/// Android ships without IPADIC (45 MB, see Cargo.toml), so kanji cannot be read there. Kana still
+/// can, letter by letter; a run with any kanji in it stays as written.
+#[cfg(target_os = "android")]
+fn japanese_run(run: &str) -> String {
+    if run.chars().all(|c| is_kana(c) || !c.is_alphabetic()) {
+        run.to_romaji()
+    } else {
+        run.to_owned()
+    }
+}
+
+#[cfg(not(target_os = "android"))]
 fn japanese_run(run: &str) -> String {
     let Some(tokenizer) = TOKENIZER.as_ref() else {
         return run.to_owned();

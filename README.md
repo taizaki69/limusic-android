@@ -88,6 +88,7 @@ YouTube Music client, and grew from there.
 | Linux (Fedora/RHEL) | `.rpm` | Needs `mpv-libs` installed (`sudo dnf install mpv-libs`). No updates, redownload each release |
 | macOS (Apple Silicon) | `.dmg` | Self-updating. Unsigned, so the first launch needs `xattr -dr com.apple.quarantine /Applications/limusic.app` |
 | macOS (Intel) | none | Build from source, see [docs/BUILD-PLATFORMS.md](docs/BUILD-PLATFORMS.md) |
+| Android (arm64, armv7, x86_64) | `.apk` | From this repo's [Android workflow](.github/workflows/android.yml) (Actions artifacts, and release assets on `v*` tags). Android 8.0+. See [docs/ANDROID.md](docs/ANDROID.md) |
 
 Community-maintained repositories, packaged and updated by their maintainers rather than by this project:
 
@@ -96,6 +97,16 @@ Community-maintained repositories, packaged and updated by their maintainers rat
 | Linux (Arch) | [AUR](https://aur.archlinux.org/packages/limusic-bin) | `yay -S limusic-bin`. Maintained by [@xiryuudev](https://github.com/xiryuudev), updates through pacman |
 | Linux (Fedora COPR) | [COPR](https://copr.fedorainfracloud.org/coprs/oguzkarayemis/limusic/) | `sudo dnf copr enable oguzkarayemis/limusic` then `sudo dnf install limusic`. Maintained by [@oguzkarayemis](https://github.com/oguzkarayemis), updates through dnf |
 | Linux (openSUSE Tumbleweed) | [OBS](https://build.opensuse.org/package/show/home:itachi_re/limusic) | `sudo zypper ar -p 100 https://download.opensuse.org/repositories/home:/itachi_re/openSUSE_Tumbleweed/home:itachi_re.repo` then `sudo zypper install limusic`. Maintained by [@itachi-re](https://github.com/itachi-re), updates through zypper. The repo carries the maintainer's other packages too, so `-p 100` keeps it below the distro repos |
+
+### Android
+
+The Android build is the same Rust core and Svelte UI, packaged with Tauri 2's mobile support.
+Audio plays through Media3/ExoPlayer in a media session service, so it keeps playing in the
+background with lock-screen, notification, headset and Bluetooth controls. Sign-in, search,
+browsing, the library, the queue with radio continuation, synced lyrics, scrobbling and Listen
+Together all carry over. The mini player, tray, global hotkeys, Discord, music videos and
+crossfade are desktop only. Building it and the full list of differences are in
+[docs/ANDROID.md](docs/ANDROID.md).
 
 ---
 

@@ -365,9 +365,12 @@ pub async fn forget_video_stream(state: St<'_>, video_id: String) -> Result<(), 
 /// stored `system_titlebar` preference on Linux/Windows, and always `overlay` on macOS, where the
 /// traffic lights come from `tauri.macos.conf.json`'s `titleBarStyle: Overlay` and there is no
 /// preference to make. Anything but `off` means the app hides its own window buttons, drops its
-/// corner rounding and leaves resizing to the compositor.
+/// corner rounding and leaves resizing to the compositor. Android has no frame at all: `on`, so the
+/// titlebar keeps no window buttons and the root no rounded corners.
 fn native_chrome(db: &crate::db::Db) -> &'static str {
-    if cfg!(target_os = "macos") {
+    if cfg!(mobile) {
+        "on"
+    } else if cfg!(target_os = "macos") {
         "overlay"
     } else if db.get_setting("system_titlebar").as_deref() == Some("true") {
         "on"
@@ -399,6 +402,8 @@ pub async fn get_settings(state: St<'_>) -> Result<serde_json::Value, String> {
     Ok(serde_json::Value::Object(map))
 }
 
+// `app` serves the autostart and titlebar settings, neither of which exists on Android.
+#[cfg_attr(mobile, allow(unused_variables))]
 #[tauri::command]
 pub async fn set_setting(
     app: tauri::AppHandle,
@@ -413,6 +418,7 @@ pub async fn set_setting(
     // startup repoints an existing entry at the running binary (lib.rs). Before the write, so a
     // failure leaves the setting as it was. A dev build would register itself, and at login its
     // window needs a vite server that isn't running.
+    #[cfg(desktop)]
     if key == "autostart" {
         if tauri::is_dev() {
             return Err(
@@ -491,7 +497,7 @@ pub async fn set_setting(
     }
     // Hand the frame back to the compositor (or take it again). macOS is not on this path: its
     // titlebar style is fixed at window creation, so the setting is hidden there.
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", mobile)))]
     if key == "system_titlebar" {
         use tauri::Manager;
         if let Some(w) = app.get_webview_window("main") {
@@ -784,6 +790,7 @@ pub async fn show_main(state: St<'_>, window: tauri::WebviewWindow) -> Result<bo
         return Ok(false);
     }
     window.show().map_err(|e| e.to_string())?;
+    #[cfg(desktop)]
     window.unminimize().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
     crate::tray::set_main_visible(window.app_handle(), true);
@@ -2502,6 +2509,15 @@ pub struct BetaUpdate {
 ///
 /// Any different version counts, same as `allowDowngrades` on stable: the pointer only moves forward
 /// by itself, so a lower version there is a beta rollback somebody made on purpose.
+///
+/// Android has no updater: a new version is a new APK, so there is never a beta to offer.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn check_beta_update(_webview: tauri::Webview) -> Result<Option<BetaUpdate>, String> {
+    Ok(None)
+}
+
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn check_beta_update(webview: tauri::Webview) -> Result<Option<BetaUpdate>, String> {
     use tauri::Manager;
@@ -2661,7 +2677,13 @@ pub async fn listenbrainz_profile(
 /// thread, where the window messages run inline and the order is guaranteed.
 #[tauri::command]
 pub fn theater_fullscreen(window: tauri::WebviewWindow, on: bool) -> Result<(), String> {
-    #[cfg(not(target_os = "windows"))]
+    // Android: the app is already edge to edge, theater mode is the UI's layout alone.
+    #[cfg(mobile)]
+    {
+        let _ = (window, on);
+        Ok(())
+    }
+    #[cfg(not(any(target_os = "windows", mobile)))]
     {
         window.set_fullscreen(on).map_err(|e| e.to_string())
     }

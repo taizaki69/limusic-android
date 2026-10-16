@@ -1,0 +1,118 @@
+name: Android
+
+# Builds the Android APKs (arm64, armv7, x86_64) on every push and PR, and attaches them to a
+# GitHub release when a `v*` tag is pushed. See docs/ANDROID.md for what the Android build is.
+#
+# Signing: with the four ANDROID_KEYSTORE_* secrets set, release APKs are signed with that key.
+# Without them (forks, PRs) they are signed with the runner's debug key: installable for testing,
+# but they cannot update an install signed with the real key.
+
+on:
+  push:
+    branches: [master, main, dev]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: 29.0.14206865
+      # Secrets can't be read in an `if:`, so whether one exists is lifted into the job env.
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install NDK and platform
+        run: |
+          sdkmanager --install "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;37.0.0"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          key: android
+
+      # bindgen (rquickjs-sys) needs libclang on the host and the NDK sysroot for the target.
+      - name: Bindgen setup
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev
+          sysroot="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          for t in aarch64_linux_android armv7_linux_androideabi i686_linux_android x86_64_linux_android; do
+            echo "BINDGEN_EXTRA_CLANG_ARGS_${t}=--sysroot=$sysroot" >> "$GITHUB_ENV"
+          done
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: src-tauri/gen/android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > release.jks
+          {
+            echo "storeFile=release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+
+      - name: Build APKs
+        working-directory: ui
+        run: pnpm tauri android build --apk --split-per-abi --target aarch64 --target armv7 --target x86_64
+
+      - name: Collect
+        run: |
+          mkdir -p dist
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          for apk in $(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk'); do
+            abi=$(basename "$(dirname "$(dirname "$apk")")")
+            cp "$apk" "dist/limusic-${version}-${abi}.apk"
+          done
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: limusic-android
+          path: dist/*.apk
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk

@@ -79,6 +79,16 @@ impl Bridge {
     /// finished loading (Tauri `on_page_load`) AND a probe confirms JS↔Rust round-trips. On any
     /// failure the just-built window is destroyed so its label can be reused (no orphan
     /// "already exists").
+    ///
+    /// Android runs one webview, the app's own: a second window would take its place. The cipher
+    /// then degrades the way it does when this fails anywhere (cipher/mod.rs), and the direct-URL
+    /// clients carry playback.
+    #[cfg(mobile)]
+    pub async fn create(_app: &AppHandle, _label: &str) -> Result<Bridge, Error> {
+        Err(Error::Build("hidden webviews are not available on Android".into()))
+    }
+
+    #[cfg(desktop)]
     pub async fn create(app: &AppHandle, label: &str) -> Result<Bridge, Error> {
         // Reclaim the label if a prior attempt left an orphan (or a concurrent build raced us).
         destroy_and_wait(app, label).await;

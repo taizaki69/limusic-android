@@ -60,6 +60,15 @@ const ADD_ACCOUNT_URL: &str =
 /// Open the login webview. Returns immediately; sign-in completes asynchronously (the UI learns via
 /// the `auth-changed` event, or `login-error` on failure). `add_account` picks the AddSession
 /// flow so an additional Google account can be added while another is signed in.
+///
+/// Android signs in through a native activity with its own WebView (LoginActivity.kt), which hands
+/// the cookies back to `crate::android`; a second Tauri window is not possible there.
+#[cfg(mobile)]
+pub fn open_login(app: AppHandle, _state: Arc<AppState>, add_account: bool) {
+    crate::android::open_login(app, add_account);
+}
+
+#[cfg(desktop)]
 pub fn open_login(app: AppHandle, state: Arc<AppState>, add_account: bool) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
 
@@ -180,6 +189,12 @@ fn no_webgl(win: &tauri::WebviewWindow) {
 ///
 /// Nothing is emitted on failure: the user is already looking at "sign in again", and a webview
 /// session that has genuinely expired leaves them exactly where they were.
+///
+/// Android has no hidden webview to reload the site in; the user signs in again instead.
+#[cfg(mobile)]
+pub async fn refresh_session(_app: AppHandle, _state: Arc<AppState>) {}
+
+#[cfg(desktop)]
 pub async fn refresh_session(app: AppHandle, state: Arc<AppState>) {
     if !state.it.is_logged_in() || !claim_refresh() {
         return;

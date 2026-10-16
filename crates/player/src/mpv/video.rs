@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use libmpv2::render::{OpenGLInitParams, RenderContext, RenderParam, RenderParamApiType};
 
-use crate::{quoted, Decks, Error, Player};
+use super::{quoted, Decks, Error, Player};
 
 /// The playing track and the gapless-next one are all that matter; the rest covers a skip landing
 /// while a resolve is in flight.

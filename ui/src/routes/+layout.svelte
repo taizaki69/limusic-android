@@ -31,6 +31,9 @@
 	import Titlebar from '$lib/components/Titlebar.svelte';
 	import ResizeBorders from '$lib/components/ResizeBorders.svelte';
 	import PlayerBar from '$lib/components/PlayerBar.svelte';
+	import MobilePlayerBar from '$lib/components/MobilePlayerBar.svelte';
+	import MobileNav from '$lib/components/MobileNav.svelte';
+	import { mobile } from '$lib/platform';
 	import QueuePanel from '$lib/components/QueuePanel.svelte';
 	import LyricsPanel from '$lib/components/LyricsPanel.svelte';
 	import CommentsPanel from '$lib/components/CommentsPanel.svelte';
@@ -155,7 +158,9 @@
 	// step aside for it and the bar's buttons switch its tabs. Off: these are the only owner, the
 	// buttons always mean the panels, and the panels float over that view like they float over a
 	// page, so opening it costs you nothing you had open.
-	const tabbed = $derived(np.open && appearance.tabbedPlayer);
+	// A phone has no room for the tabbed view's two columns, so it always shows the artwork and the
+	// panels slide over it.
+	const tabbed = $derived(np.open && appearance.tabbedPlayer && !mobile);
 	// Stepping aside hides the panels without closing them, so closing the view brings back
 	// whatever was open before it (#365).
 	const showQueue = $derived(queueOpen && !tabbed);
@@ -287,11 +292,11 @@
 					.h}px;box-shadow:0 0 0 100vmax var(--background)"
 			></div>
 		{/if}
-		<ResizeBorders />
+		{#if !mobile}<ResizeBorders />{/if}
 		<Titlebar />
 		<!-- relative: the queue and lyrics panels are absolute overlays inside it (see QueuePanel). -->
 		<div class="relative flex min-h-0 flex-1">
-			<Sidebar />
+			{#if !mobile}<Sidebar />{/if}
 			<!-- dragScroll: dragging a card up to home's Shortcuts grid has to be possible from anywhere in
 			     the feed, so aiming at the top edge scrolls this container while the drag is in flight. -->
 			<main
@@ -322,7 +327,22 @@
 				/>{/if}
 			{#if showQueue}<QueuePanel onClose={() => (queueOpen = false)} />{/if}
 		</div>
-		{#if playback.now}
+		{#if mobile}
+			{#if playback.now}
+				<div class="relative z-20" in:fly={{ y: 64, duration: 250, easing: cubicOut }}>
+					<MobilePlayerBar
+						onToggleQueue={() => (queueOpen = !queueOpen)}
+						{queueOpen}
+						onToggleLyrics={() => {
+							lyricsOpen = !lyricsOpen;
+							if (lyricsOpen) commentsOpen = false;
+						}}
+						{lyricsOpen}
+					/>
+				</div>
+			{/if}
+			<div class="relative z-20"><MobileNav /></div>
+		{:else if playback.now}
 			<!-- Slides up from its own height on first play; leaves instantly (bar removal is rare).
 			     z-20 on the wrapper, not the bar: the intro's transform makes this a stacking context,
 			     so a z on the footer inside would be trapped under it. The now-playing view is z-20 and

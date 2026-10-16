@@ -23,17 +23,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tauri = { version = "2", features = ["tray-icon", "protocol-asset", "macos-private-api", "image-png"] }
-tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-tauri-plugin-single-instance = "2"
-tauri-plugin-autostart = "2"
-tauri-plugin-global-shortcut = "2"
 rusqlite = { version = "0.32", features = ["bundled"] }
-# Phase 2 extraction stack (cipher + PoToken). context/04, 05, 13.
-# BotGuard runs under deno_core + JSDOM, NOT in a hidden webview. Every token a real browser engine
-# mints is rejected by googlevideo; a minimal-DOM runtime is the only one that produces an accepted
-# one. Measured in `progress/active/webremix-stream-403.md`. This pulls in V8.
-rustypipe-botguard = "0.1.2"
 base64 = "0.22"
 regex = "1"
 urlencoding = "2"
@@ -46,7 +37,6 @@ http-body-util = "0.1"
 
 innertube = { path = "../crates/innertube" }
 player = { path = "../crates/player" }
-souvlaki = { version = "0.8.3", default-features = false, features = ["use_zbus"] }
 # Listen Together: shared wire types + WebSocket client (wss via rustls). context/19.
 listen-protocol = { workspace = true }
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
@@ -59,25 +49,43 @@ discord-rich-presence = "1.1.0"
 md-5 = "0.10"
 lofty = "0.22.2"
 tauri-plugin-dialog = "2.7.2"
-tauri-plugin-window-state = "2.4.1"
 tauri-plugin-clipboard-manager = "2.3.2"
-# Romanized lyrics (#202, romanize.rs). lindera's build script downloads IPADIC (~12 MB, from
-# GitHub) once and embeds it uncompressed (~45 MB in the binary, borrowed in place, never copied to
-# the heap); rust-cache keeps it across CI runs. Held at 0.30: every lindera from 0.35 on needs
-# encoding_rs >= 0.8.35, and rustypipe-botguard's deno_web pins =0.8.33. 0.31 to 0.34 fetch
-# IPADIC from hosts that are gone. Move up when botguard does.
-lindera = { version = "=0.30.0", default-features = false, features = ["ipadic"] }
 wana_kana = { version = "5", default-features = false }
 pinyin = { version = "0.11", default-features = false, features = ["with_tone"] }
 any_ascii = "0.3"
-# Track-change notifications (notify.rs): D-Bus on Linux, WinRT toasts, NSUserNotification.
-notify-rust = "4"
 # Spotify import (#375, spotify.rs + import.rs). All four were in the lockfile already: zip under
 # the Windows updater, csv and unicode-normalization under lindera, strsim under clap.
 zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
 csv = "1"
 strsim = "0.11"
 unicode-normalization = "0.1"
+
+# Desktop only. Android has none of these: no tray, window state, global shortcuts, self-update or
+# second instance; the OS media session is the Kotlin player service (src/android.rs) rather than
+# souvlaki.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2.4.1"
+souvlaki = { version = "0.8.3", default-features = false, features = ["use_zbus"] }
+# Track-change notifications (notify.rs): D-Bus on Linux, WinRT toasts, NSUserNotification.
+# Android's media notification already says what is playing.
+notify-rust = "4"
+# Phase 2 extraction stack (cipher + PoToken). context/04, 05, 13.
+# BotGuard runs under deno_core + JSDOM, NOT in a hidden webview. Every token a real browser engine
+# mints is rejected by googlevideo; a minimal-DOM runtime is the only one that produces an accepted
+# one. Measured in `progress/active/webremix-stream-403.md`. This pulls in V8, which is why it is
+# desktop only: Android streams through the direct-URL clients instead (potoken/mod.rs).
+rustypipe-botguard = "0.1.2"
+# Romanized lyrics (#202, romanize.rs). lindera's build script downloads IPADIC (~12 MB, from
+# GitHub) once and embeds it uncompressed (~45 MB in the binary, borrowed in place, never copied to
+# the heap); rust-cache keeps it across CI runs. Held at 0.30: every lindera from 0.35 on needs
+# encoding_rs >= 0.8.35, and rustypipe-botguard's deno_web pins =0.8.33. 0.31 to 0.34 fetch
+# IPADIC from hosts that are gone. Move up when botguard does. Not on Android: 45 MB is too much
+# for an APK, so Japanese lines keep a kana-only romanization there (romanize.rs).
+lindera = { version = "=0.30.0", default-features = false, features = ["ipadic"] }
 
 [dev-dependencies]
 # Mock runtime for the IPC guard test (lib.rs `only_ui`).
@@ -108,3 +116,7 @@ libc = "0.2"
 webkit2gtk = { version = "2.0", features = ["v2_40"] }
 # Holding off suspend while playing (inhibit.rs, #347). Already in the tree through notify-rust.
 zbus = "5"
+
+# The Kotlin player reports back over a plain JNI call (android/mod.rs). Same version tao uses.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"

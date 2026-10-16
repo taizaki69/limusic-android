@@ -34,6 +34,7 @@
 	import * as api from '$lib/api';
 	import { openMiniPlayer, playback, prefs, refreshView, toast, ui } from '$lib/player.svelte';
 	import { win } from '$lib/win.svelte';
+	import { mobile } from '$lib/platform';
 	import { lt } from '$lib/lt.svelte';
 	import { anchorMenu, fitMenu, NO_ANCHOR } from '$lib/menu';
 	import { t } from '$lib/i18n.svelte';
@@ -133,10 +134,14 @@
      that don't dismiss it (`onWindowChrome`). -->
 <header
 	data-tauri-drag-region
-	class="pointer-events-auto relative {ui.theaterOpen ? 'z-0' : 'z-50'} flex h-9 shrink-0 select-none items-center justify-between border-b border-border/60 bg-background"
+	class="pointer-events-auto relative {ui.theaterOpen ? 'z-0' : 'z-50'} flex {mobile
+		? 'h-12'
+		: 'h-9'} shrink-0 select-none items-center justify-between border-b border-border/60 bg-background"
 >
 	<span
-		class="pointer-events-none absolute inset-x-0 text-center text-xs font-medium tracking-wide text-muted-foreground"
+		class="pointer-events-none absolute inset-x-0 text-center text-xs font-medium tracking-wide text-muted-foreground {mobile
+			? 'hidden'
+			: ''}"
 	>
 		Limusic
 	</span>
@@ -161,6 +166,7 @@
 		>
 			<HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2.5} class="h-5 w-5" />
 		</button>
+		{#if !mobile}
 		<button
 			class="flex h-full w-9 items-center justify-center text-foreground/80 transition-colors hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
 			onclick={() => history.forward()}
@@ -170,6 +176,7 @@
 		>
 			<HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2.5} class="h-5 w-5" />
 		</button>
+		{/if}
 		<!-- Third in the browser's own control group, and read as such without a label. It drops the
 		     browse cache and remounts the page, which is the only way to ask YouTube for a different
 		     home feed: refetching rotates roughly a third of "Quick picks" (#177). Never disabled,
@@ -226,6 +233,7 @@
 			</span>
 		</button>
 
+		{#if !mobile}
 		<button
 			class="flex h-full w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground {discordOn
 				? 'text-foreground'
@@ -244,6 +252,7 @@
 				></span>
 			</span>
 		</button>
+		{/if}
 
 		<button
 			class="flex h-full w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground {connected
@@ -275,6 +284,7 @@
 		<!-- Theater mode: fullscreen, cover and lyrics, nothing else. Next to the mini player because
 		     the pair are the same idea in opposite directions (shrink the app / become the screen),
 		     and disabled with nothing playing, since there'd be nothing to show. -->
+		{#if !mobile}
 		<button
 			class="flex h-full w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
 			onclick={() => (ui.theaterOpen = true)}
@@ -284,10 +294,12 @@
 		>
 			<HugeiconsIcon icon={CameraVideoIcon} class="h-4 w-4" />
 		</button>
+		{/if}
 
 		<!-- Mini player: hides the app to the tray and hands over to the floating widget (mini.rs).
 		     It sits with the integrations rather than the window controls because it swaps what
 		     you're using, not the size of this window. -->
+		{#if !mobile}
 		<button
 			class="flex h-full w-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
 			onclick={openMiniPlayer}
@@ -296,6 +308,7 @@
 		>
 			<HugeiconsIcon icon={MinimizeScreenIcon} class="h-4 w-4" />
 		</button>
+		{/if}
 
 		{#if win.chrome === 'off'}
 			<div class="mx-1.5 h-4 w-px bg-border"></div>
