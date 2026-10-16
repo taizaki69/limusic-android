@@ -211,7 +211,7 @@
 								{/if}
 								{#if !round}
 									<button
-										class="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/60 focus-visible:opacity-100 group-hover/pick:opacity-100"
+										class="touch-hide absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/60 focus-visible:opacity-100 group-hover/pick:opacity-100"
 										class:animate-pulse={busy === item.id}
 										disabled={busy === item.id}
 										aria-label={t('a11y.play_item', { title: item.title })}
@@ -234,7 +234,7 @@
 						</div>
 						<ItemMenu
 							{item}
-							triggerClass="absolute right-7 top-1 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/pick:opacity-100"
+							triggerClass="touch-hide absolute right-7 top-1 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/pick:opacity-100"
 						/>
 						<button
 							onclick={() => removePick(item.id)}

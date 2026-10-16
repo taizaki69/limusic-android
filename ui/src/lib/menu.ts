@@ -95,6 +95,13 @@ export function anchorMenu(e: Event, { align = 'left' }: { align?: 'left' | 'rig
  */
 export function fitMenu(a: Anchor) {
 	return (el: HTMLElement) => {
+		// A phone (`.mobile`, platform.ts): a sheet along the bottom edge, styled in layout.css,
+		// rather than a popover at a fingertip with rows sized for a mouse.
+		if (document.documentElement.classList.contains('mobile')) {
+			el.classList.add('menu-sheet');
+			el.style.cssText = '';
+			return;
+		}
 		el.style.cssText = `${UNPLACED};left:0;top:0;right:auto;bottom:auto`;
 		// offset*, not a client rect: the popup opens under a `zoom-in-95` animation, and a client
 		// rect is the *transformed* box, so it would report 95% of the real size.

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mobile } from '$lib/platform';
 	// The search page's top result, drawn as the answer rather than as one card among many: the
 	// artwork large, the title at display size, a play button that does the right thing for the
 	// kind, and the few rows YouTube pairs with it (an artist's hits, a song's other takes).
@@ -70,11 +71,11 @@
 			<div class="absolute inset-0 bg-gradient-to-b from-card/30 via-card/75 to-card"></div>
 		</div>
 	{/if}
-	<div class="flex items-center gap-4 p-5">
+	<div class="flex items-center {mobile ? 'gap-2 p-3' : 'gap-4 p-5'}">
 		<div
 			role="button"
 			tabindex="0"
-			class="flex min-w-0 flex-1 cursor-pointer items-center gap-5"
+			class="flex min-w-0 flex-1 cursor-pointer items-center {mobile ? 'gap-3' : 'gap-5'}"
 			onclick={() => openItem(item)}
 			onkeydown={(e) => {
 				if (e.target !== e.currentTarget) return;
@@ -86,7 +87,7 @@
 			title={item.subtitle ? `${item.title} • ${item.subtitle}` : item.title}
 		>
 			<div
-				class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden bg-muted text-muted-foreground/50 shadow-xl {round
+				class="flex {mobile ? 'h-20 w-20' : 'h-28 w-28'} shrink-0 items-center justify-center overflow-hidden bg-muted text-muted-foreground/50 shadow-xl {round
 					? 'rounded-full'
 					: 'rounded-xl'}"
 			>

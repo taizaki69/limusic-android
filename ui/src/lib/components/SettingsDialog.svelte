@@ -18,7 +18,10 @@
 		Globe02Icon,
 		ArrowDown01Icon,
 		Alert02Icon,
-		LinkSquare02Icon
+		LinkSquare02Icon,
+		ArrowLeft01Icon,
+		ArrowRight01Icon,
+		Cancel01Icon as CloseIcon
 	} from '@hugeicons/core-free-icons';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -121,6 +124,8 @@
 	$effect(() => {
 		if (!ui.settingsOpen) return;
 		untrack(() => {
+			// A phone opens on the section list, unless this was opened on a section (below).
+			ui.settingsSub = mobile && !!ui.settingsFocus;
 			// Opened on a section from elsewhere (the lyrics source picker): its tab, scrolled to it
 			// once the tab has rendered. The Last.fm menu and "Edit scrobble" open a whole tab.
 			if (ui.settingsFocus === 'scrobbling') {
@@ -437,7 +442,7 @@
 	tall?: boolean;
 })}
 	<div class="px-4 py-3.5">
-		<div class="flex {o.tall ? 'items-start' : 'items-center'} justify-between gap-6">
+		<div class="settings-row flex {o.tall ? 'items-start' : 'items-center'} justify-between gap-6">
 			<div class="min-w-0">
 				<div class="flex items-center gap-2">
 					<span class="text-sm font-medium">{o.title}</span>
@@ -469,32 +474,66 @@
 	     under them, so they need the extra width; every other tab reads better narrow. Deliberately not animated:
 	     transitioning the width relayouts the whole modal every frame, and WebKitGTK is the webview
 	     that would pay for it. -->
+	<!-- A phone gets the whole screen, Android-settings style: a list of sections, each opening on a
+	     page of its own with a way back (`ui.settingsSub`, which the back gesture also pops). A tab
+	     strip or a rail beside the content leaves the rows a third of the width they need. -->
 	<Dialog.Content
-		class="gap-0 overflow-hidden p-0 {tab === 'discord' || tab === 'scrobbling' || tab === 'themes' ? 'sm:max-w-5xl' : tab === 'hotkeys' ? 'sm:max-w-4xl' : 'sm:max-w-3xl'}"
+		showCloseButton={!mobile}
+		class="gap-0 overflow-hidden p-0 {mobile
+			? 'h-dvh max-h-dvh w-screen max-w-none rounded-none ring-0 data-open:zoom-in-100 data-open:slide-in-from-bottom-6 data-closed:zoom-out-100'
+			: tab === 'discord' || tab === 'scrobbling' || tab === 'themes' ? 'sm:max-w-5xl' : tab === 'hotkeys' ? 'sm:max-w-4xl' : 'sm:max-w-3xl'}"
 	>
 		<Dialog.Description class="sr-only">{t('settings.title')}</Dialog.Description>
 
-		<!-- On a phone the rail turns into a strip of tabs across the top. -->
-		<div class="flex min-w-0 {mobile ? 'h-[85vh] flex-col' : 'h-[min(38rem,80vh)]'}">
+		<!-- h-dvh, not h-full: the dialog is a grid with an auto row, so a percentage height here
+		     resolves to the content's own height and the pane below never gets to scroll. -->
+		<div class="flex min-w-0 {mobile ? 'h-dvh flex-col' : 'h-[min(38rem,80vh)]'}">
+			{#if mobile && !ui.settingsSub}
+				<header class="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+					<button
+						onclick={() => (ui.settingsOpen = false)}
+						class="flex size-10 items-center justify-center rounded-full text-muted-foreground"
+						aria-label={t('common.close')}
+					>
+						<HugeiconsIcon icon={CloseIcon} class="h-5 w-5" />
+					</button>
+					<Dialog.Title class="font-heading text-lg font-semibold">{t('settings.title')}</Dialog.Title>
+				</header>
+				<nav class="min-h-0 flex-1 overflow-y-auto p-2">
+					{#each TABS as tb (tb.id)}
+						<button
+							onclick={() => ((tab = tb.id), (ui.settingsSub = true))}
+							class="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left active:bg-foreground/5"
+						>
+							<span
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-primary"
+							>
+								<HugeiconsIcon icon={tb.icon} size={20} strokeWidth={2} />
+							</span>
+							<span class="min-w-0 flex-1">
+								<span class="block text-[15px] font-medium">{tb.label}</span>
+								<span class="block truncate text-xs text-muted-foreground">{tb.hint}</span>
+							</span>
+							<HugeiconsIcon icon={ArrowRight01Icon} class="h-4 w-4 shrink-0 text-muted-foreground" />
+						</button>
+					{/each}
+					{#if version}
+						<p class="px-3 pt-4 pb-2 text-xs text-muted-foreground">Limusic v{version}</p>
+					{/if}
+				</nav>
+			{:else}
+			{#if !mobile}
 			<!-- Tab rail -->
-			<nav
-				class="flex shrink-0 bg-muted/40 {mobile
-					? 'w-full overflow-x-auto border-b p-2 pr-12'
-					: 'w-52 flex-col border-r p-3'}"
-			>
-				<Dialog.Title
-					class="px-3 pt-1 pb-4 font-heading text-base font-semibold {mobile ? 'sr-only' : ''}"
-				>
+			<nav class="flex w-52 shrink-0 flex-col border-r bg-muted/40 p-3">
+				<Dialog.Title class="px-3 pt-1 pb-4 font-heading text-base font-semibold">
 					{t('settings.title')}
 				</Dialog.Title>
-				<div class="flex gap-0.5 {mobile ? 'flex-row' : 'flex-col'}">
+				<div class="flex flex-col gap-0.5">
 					{#each TABS as tb (tb.id)}
 						<button
 							onclick={() => (tab = tb.id)}
 							aria-current={tab === tb.id}
-							class="flex {mobile
-								? 'shrink-0'
-								: 'w-full'} cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors {tab ===
+							class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors {tab ===
 							tb.id
 								? 'bg-background text-foreground shadow-sm ring-1 ring-border/70'
 								: 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'}"
@@ -509,19 +548,33 @@
 						</button>
 					{/each}
 				</div>
-				{#if version && !mobile}
+				{#if version}
 					<span class="mt-auto px-3 pb-1 text-[11px] text-muted-foreground">v{version}</span>
 				{/if}
 			</nav>
+			{/if}
 
 			<!-- Content pane. min-w-0: a flex child's min-width is auto, so without it one wide row
 			     (a long font name, a long path) widens the pane and pushes every tab off the modal. -->
-			<div class="flex min-w-0 flex-1 flex-col">
+			<div class="flex min-h-0 min-w-0 flex-1 flex-col">
+				{#if mobile}
+					<header class="flex h-14 shrink-0 items-center gap-1 border-b px-2">
+						<button
+							onclick={() => (ui.settingsSub = false)}
+							class="flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground"
+							aria-label={t('common.back')}
+						>
+							<HugeiconsIcon icon={ArrowLeft01Icon} class="h-5 w-5" />
+						</button>
+						<Dialog.Title class="truncate font-heading text-lg font-semibold">{currentTab.label}</Dialog.Title>
+					</header>
+				{:else}
 				<!-- h-14 also keeps the dialog's close button clear of the first row. -->
 				<header class="flex h-14 shrink-0 flex-col justify-center border-b px-6 pr-14">
 					<h2 class="text-sm font-semibold">{currentTab.label}</h2>
 					<p class="truncate text-xs text-muted-foreground">{currentTab.hint}</p>
 				</header>
+				{/if}
 
 				{#if loaded && tab === 'discord'}
 					<DiscordSettings {settings} />
@@ -861,6 +914,7 @@
 				</div>
 				{/if}
 			</div>
+			{/if}
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

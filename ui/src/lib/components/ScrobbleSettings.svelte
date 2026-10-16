@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mobile } from '$lib/platform';
 	// The Scrobbling tab (#327, #404): when a play counts, what it is sent as, rules that rewrite
 	// every track, and fixes for single tracks. Built like the Discord tab, options on the left and a
 	// live preview on the right, because "find (?i)vevo$ in the artist" means nothing until you see
@@ -340,7 +341,7 @@
 
 {#snippet row_(o: { title: string; desc?: string; control?: Snippet; below?: Snippet })}
 	<div class="px-4 py-3.5">
-		<div class="flex items-center justify-between gap-4">
+		<div class="settings-row flex items-center justify-between gap-4">
 			<span class="min-w-0 text-sm font-medium">{o.title}</span>
 			{#if o.control}
 				<div class="shrink-0">{@render o.control()}</div>
@@ -355,8 +356,10 @@
 	</div>
 {/snippet}
 
-<div class="flex min-h-0 flex-1 max-lg:flex-col">
-	<div class="min-w-0 flex-1 overflow-y-auto px-6 py-5">
+<!-- A phone scrolls the whole thing as one page, the preview after the options: stacked as two
+     scrollers, the preview held the bottom of the screen and a swipe there scrolled nothing. -->
+<div class={mobile ? 'min-h-0 flex-1 overflow-y-auto' : 'flex min-h-0 flex-1 max-lg:flex-col'}>
+	<div class="min-w-0 px-6 py-5 {mobile ? '' : 'flex-1 overflow-y-auto'}">
 		<section class={GROUP}>
 			<!-- The account, the way Last.fm's own profile header shows it: avatar, name, and the
 			     three counts under it. -->
@@ -773,7 +776,9 @@
 	</div>
 
 	<aside
-		class="flex shrink-0 flex-col overflow-y-auto bg-muted/30 px-5 py-5 lg:w-[22rem] lg:border-l max-lg:border-t"
+		class="flex shrink-0 flex-col bg-muted/30 px-5 py-5 lg:w-[22rem] lg:border-l max-lg:border-t {mobile
+			? ''
+			: 'overflow-y-auto'}"
 	>
 		<div class="mb-2.5 flex items-center gap-2">
 			<h3 class="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">

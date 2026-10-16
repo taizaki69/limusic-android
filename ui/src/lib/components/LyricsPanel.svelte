@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { beforeNavigate } from '$app/navigation';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
-	import { Maximize01Icon, Minimize01Icon } from '@hugeicons/core-free-icons';
+	import { ArrowDown01Icon, Maximize01Icon, Minimize01Icon } from '@hugeicons/core-free-icons';
 	import LyricsView from './LyricsView.svelte';
 	import { ui } from '$lib/player.svelte';
 	import { t } from '$lib/i18n.svelte';
@@ -17,26 +17,44 @@
 	// page, not the lyrics. The docked panel sits beside the content, so it stays put.
 	// beforeNavigate (not a pathname effect) so clicking the tab you're already on also closes it.
 	beforeNavigate(() => {
-		if (expanded) onClose();
+		if (expanded || mobile) onClose();
 	});
 </script>
 
 <!-- Same overlay pattern as QueuePanel: always over the content, with a dismiss scrim below lg. When
      the queue is open too, this one steps left of it at lg+; narrower than that they stack. -->
+<!-- Not on a phone, where the sheet covers everything and has its own ⌄. -->
+{#if !mobile}
 <button
 	class="absolute inset-0 z-20 cursor-default bg-black/40 lg:hidden"
 	onclick={onClose}
 	aria-label={t('a11y.close_lyrics')}
 	transition:fade={{ duration: 150 }}
 ></button>
+{/if}
+<!-- A phone: a full-screen sheet in the big type, with a way down instead of the size toggle. -->
 <aside
-	transition:fly={{ x: 32, duration: 220, easing: cubicOut }}
-	class={expanded
+	transition:fly={mobile ? { y: 48, duration: 220, easing: cubicOut } : { x: 32, duration: 220, easing: cubicOut }}
+	class={mobile
+		? 'absolute inset-0 z-30 flex flex-col bg-background shadow-2xl'
+		: expanded
 		? // ponytail: left offsets mirror Sidebar's w-16/lg:w-60 (and its manual collapse), right
 			// offset mirrors QueuePanel's w-80 — keep in sync if those change.
 			`absolute inset-y-0 ${mobile ? 'left-0' : 'left-16'} right-0 z-30 flex h-full flex-col border-l bg-card/95 shadow-2xl ${ui.sidebarCollapsed || mobile ? '' : 'lg:left-60'} ${queueOpen ? 'lg:right-80' : ''}`
 		: `absolute inset-y-0 right-0 z-30 flex h-full w-80 max-w-[80vw] flex-col border-l bg-card/95 shadow-2xl ${queueOpen ? 'lg:right-80' : ''}`}
 >
+	{#if mobile}
+		<div class="flex items-center gap-2 border-b px-2 py-1.5">
+			<button
+				onclick={onClose}
+				class="flex size-10 items-center justify-center rounded-full text-muted-foreground"
+				aria-label={t('a11y.close_lyrics')}
+			>
+				<HugeiconsIcon icon={ArrowDown01Icon} class="h-5 w-5" />
+			</button>
+			<h2 class="font-heading text-base font-semibold">{t('lyrics.title')}</h2>
+		</div>
+	{:else}
 	<div class="flex items-center justify-between border-b px-4 py-3">
 		<h2 class="font-heading text-sm font-semibold">{t('lyrics.title')}</h2>
 		<button
@@ -53,5 +71,6 @@
 			/>
 		</button>
 	</div>
-	<LyricsView {expanded} />
+	{/if}
+	<LyricsView expanded={expanded || mobile} />
 </aside>

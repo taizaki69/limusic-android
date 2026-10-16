@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mobile } from '$lib/platform';
 	// The Appearance tab. A miniature of the app beside the controls shows the result before the app
 	// takes it.
 	//
@@ -265,7 +266,7 @@
 	below?: Snippet;
 })}
 	<div class="px-4 py-3.5">
-		<div class="flex min-h-8 items-center justify-between gap-4">
+		<div class="settings-row flex min-h-8 items-center justify-between gap-4">
 			<div class="flex min-w-0 items-center gap-2">
 				<span class="text-sm font-medium">{o.title}</span>
 				{#if o.badge}
@@ -465,7 +466,10 @@
 			<ThemeMock id={theme.id} dark={isDark} overrides={live} {detail} />
 		</div>
 		<div class="flex min-w-0 flex-col gap-3 lg:flex-1">
-			<p class="text-xs leading-relaxed text-muted-foreground">{t('settings.themes.preview_hint')}</p>
+			<!-- Not on a phone: beside the preview there it is a column one word wide. -->
+			{#if !mobile}
+				<p class="text-xs leading-relaxed text-muted-foreground">{t('settings.themes.preview_hint')}</p>
+			{/if}
 			<div class="flex flex-col items-start gap-1.5 lg:mt-auto">
 				<Button variant="outline" size="sm" disabled={isDefaultCustom()} onclick={resetAll}>
 					<HugeiconsIcon icon={ArrowTurnBackwardIcon} size={15} strokeWidth={2} />

@@ -5,7 +5,10 @@ declare global {
 		// interface Error {}
 		// interface Locals {}
 		// interface PageData {}
-		// interface PageState {}
+		interface PageState {
+			/** Android: a sheet (player, settings) is open over the page; back closes it. */
+			overlay?: boolean;
+		}
 		// interface Platform {}
 	}
 }

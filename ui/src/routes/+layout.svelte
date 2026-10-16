@@ -10,7 +10,8 @@
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
 	import { browser } from '$app/environment';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, pushState } from '$app/navigation';
+	import { navigating, page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { fly } from 'svelte/transition';
@@ -59,6 +60,7 @@
 	import { win, initWin } from '$lib/win.svelte';
 	import { initZoom } from '$lib/zoom.svelte';
 	import { initShortcuts } from '$lib/shortcuts';
+	import { initTouch } from '$lib/touch';
 	import { initErrorLog } from '$lib/errlog';
 	import {
 		updateState,
@@ -179,6 +181,47 @@
 		if (np.tab === 'comments') np.tab = tabBeforeComments;
 	});
 
+	// Android's back gesture is `history.back()` in the webview, which would leave the page *under*
+	// an open player or settings sheet and keep the sheet up. So while one is open there is a shallow
+	// history entry for it (SvelteKit's `pushState`), and back pops that entry instead: it closes
+	// whatever is on top: a settings section (back to the list), settings, lyrics/comments, the
+	// queue, then the player itself.
+	// The sheets cover the whole screen on a phone, so a page opened from inside one (the artist
+	// under the title, "Go to album" in a menu, a nav tab) would load out of sight behind it.
+	beforeNavigate(() => {
+		if (!mobile) return;
+		np.open = false;
+		queueOpen = lyricsOpen = commentsOpen = false;
+	});
+	const overlayOpen = $derived(
+		mobile && (ui.settingsOpen || np.open || queueOpen || lyricsOpen || commentsOpen)
+	);
+	let overlayPushed = false;
+	$effect(() => {
+		const open = overlayOpen;
+		const marked = !!page.state.overlay;
+		if (open && !overlayPushed) {
+			overlayPushed = true;
+			pushState('', { overlay: true });
+		} else if (overlayPushed && !marked) {
+			// Back was pressed: our entry is gone. Close the top layer; if another is still open,
+			// this runs again and pushes an entry for it.
+			overlayPushed = false;
+			if (ui.settingsOpen && ui.settingsSub) ui.settingsSub = false;
+			else if (ui.settingsOpen) ui.settingsOpen = false;
+			else if (lyricsOpen || commentsOpen) lyricsOpen = commentsOpen = false;
+			else if (queueOpen) queueOpen = false;
+			else np.open = false;
+		} else if (!open && overlayPushed && marked) {
+			// Closed some other way (its ✕): drop the entry so back isn't a dead press. Not when a
+			// nav tap closed it, though: that tap is navigating, and a back now would undo it.
+			overlayPushed = false;
+			setTimeout(() => {
+				if (!navigating.to && page.state.overlay && !overlayOpen) history.back();
+			});
+		}
+	});
+
 	// "Adapt colors to artwork": re-run on every track change and on the toggle itself. The 120px
 	// cover is the one the player bar has already loaded, so this costs no extra request. A Matugen
 	// palette owns every colour while it's on, so the artwork stands down.
@@ -225,12 +268,14 @@
 		}
 		// First: it reveals the window (see initWin).
 		const teardownWin = initWin();
-		checkForUpdatesQuiet();
+		// Not on Android: the releases it checks are desktop builds, and an APK can't install them.
+		if (!mobile) checkForUpdatesQuiet();
 		// Repeat while the app stays open: ✕ hides to tray by default, so this component can stay
 		// mounted for days and a mount-only check would never see a release published in between.
-		const updateTimer = setInterval(checkForUpdatesQuiet, QUIET_INTERVAL_MS);
+		const updateTimer = mobile ? 0 : setInterval(checkForUpdatesQuiet, QUIET_INTERVAL_MS);
 		const teardownApp = initApp();
 		const teardownZoom = initZoom();
+		if (mobile) initTouch();
 		const teardownShortcuts = initShortcuts();
 		initImport();
 		return () => {
@@ -425,7 +470,7 @@
 		{@const t = ui.toast}
 		<div
 			transition:fly={{ y: 16, duration: 220, easing: cubicOut }}
-			class="fixed bottom-40 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-card px-4 py-2 text-sm shadow-lg"
+			class="fixed bottom-40 left-1/2 z-[100] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border bg-card px-4 py-2 text-sm shadow-lg"
 		>
 			<!-- Three branches instead of a ternary on `icon`: HugeiconsIcon freezes `icon` at mount, so a
 			     new toast replacing a visible one would keep the old glyph. -->

@@ -14,11 +14,10 @@
 		RepeatOne01Icon,
 		Queue01Icon,
 		Mic01Icon,
-		FavouriteIcon,
 		MusicNote01Icon
 	} from '@hugeicons/core-free-icons';
 	import * as api from '$lib/api';
-	import { np, playback, cycleRepeat, toggleNowPlayingRating } from '$lib/player.svelte';
+	import { np, playback, cycleRepeat } from '$lib/player.svelte';
 	import { thumb } from '$lib/thumb';
 	import { t } from '$lib/i18n.svelte';
 
@@ -136,20 +135,7 @@
 				</button>
 			</div>
 			<div class="flex items-center justify-around">
-				{#if playback.now && !api.isLocalId(playback.now.videoId)}
-					<button
-						class="flex size-10 items-center justify-center"
-						onclick={() => toggleNowPlayingRating()}
-						aria-label={t('common.like')}
-					>
-						<HugeiconsIcon
-							icon={FavouriteIcon}
-							class="h-5 w-5 {playback.rating === 'like'
-								? 'fill-current text-primary'
-								: 'text-muted-foreground'}"
-						/>
-					</button>
-				{/if}
+				<!-- Like and ⋯ sit beside the title in the open view (NowPlaying); not repeated here. -->
 				<button
 					class="flex size-10 items-center justify-center"
 					onclick={onToggleLyrics}

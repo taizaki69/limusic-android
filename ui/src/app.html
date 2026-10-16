@@ -2,7 +2,12 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- No pinch or double-tap zoom: this is an app, and on Android the WebView would otherwise
+		     zoom the whole UI. Desktop webviews ignore the viewport tag. -->
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+		/>
 		<meta name="text-scale" content="scale" />
 		<!-- WebView2 (Windows) is Chromium, where some paint tricks that help WebKitGTK cost frames
 		     instead. See `.art-wash` in layout.css. -->
