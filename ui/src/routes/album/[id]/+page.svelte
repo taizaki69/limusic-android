@@ -29,6 +29,7 @@
     import ExplicitIcon from "$lib/components/ExplicitIcon.svelte";
     import { Skeleton } from "$lib/components/ui/skeleton";
     import * as api from "$lib/api";
+    import { mobile } from "$lib/platform";
     import type { AlbumPage, BrowseItem } from "$lib/api";
     import {
         addPick,
@@ -255,24 +256,26 @@
             ></div>
         </div>
 
-        <div class="absolute right-6 top-6 z-10">
+        <!-- A phone has no room beside the title for it: it takes its own row above. -->
+        <div class={mobile ? "relative z-10 px-6 pt-4" : "absolute right-6 top-6 z-10"}>
             <TrackFilter bind:value={query} placeholder={t("common.search_this_album")} />
         </div>
 
-        <div class="relative flex flex-col gap-5 p-6 pt-10">
-            <div class="flex items-end gap-5">
+        <div class="relative flex flex-col gap-5 p-6 {mobile ? 'pt-4' : 'pt-10'}">
+            <!-- Stacked on a phone: the cover beside a 36px title leaves the title a word a line. -->
+            <div class={mobile ? "flex flex-col items-start gap-4" : "flex items-end gap-5"}>
                 <!-- Inline width/height so the size holds even against a stale dev-server CSS that -->
                 <!-- hasn't regenerated a newly-used spacing utility (would fall back to intrinsic size). -->
                 {#if album.thumbnail}
                     <img
                         src={thumb(album.thumbnail, 400)}
                         alt=""
-                        style="width:7rem;height:7rem"
+                        style={mobile ? "width:10rem;height:10rem" : "width:7rem;height:7rem"}
                         class="shrink-0 rounded-xl object-cover shadow-2xl"
                     />
                 {:else}
                     <div
-                        style="width:7rem;height:7rem"
+                        style={mobile ? "width:10rem;height:10rem" : "width:7rem;height:7rem"}
                         class="shrink-0 rounded-xl bg-muted"
                     ></div>
                 {/if}
@@ -283,7 +286,7 @@
                         {album.subtitle ?? "Album"}
                     </div>
                     <h1
-                        class="mt-1 font-heading text-4xl font-bold tracking-tight drop-shadow"
+                        class="mt-1 font-heading {mobile ? 'text-2xl' : 'text-4xl'} font-bold tracking-tight drop-shadow"
                     >
                         {album.title ?? "Album"}
                     </h1>
@@ -336,17 +339,17 @@
                 </div>
             {/if}
 
-            <!-- Controls -->
-            <div class="relative flex items-center gap-3">
+            <!-- Controls. A phone wraps them: Play and Shuffle share the first row, the rest the next. -->
+            <div class="relative flex items-center gap-3 {mobile ? 'flex-wrap' : ''}">
                 <button
-                    class="flex cursor-pointer items-center gap-2 rounded-full text-foreground bg-primary px-6 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    class="flex cursor-pointer items-center gap-2 rounded-full text-foreground bg-primary px-6 py-2.5 {mobile ? 'flex-1 justify-center' : ''} text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
                     onclick={() => playAll(null)}
                     disabled={!album.items.length}
                 >
                     <HugeiconsIcon icon={PlayIcon} class="h-4 w-4" /> {t("player.play")}
                 </button>
                 <button
-                    class="flex cursor-pointer items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent/10 disabled:opacity-50"
+                    class="flex cursor-pointer items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent/10 disabled:opacity-50 {mobile ? 'flex-1 justify-center' : ''}"
                     onclick={shuffle}
                     disabled={!album.items.length}
                 >
@@ -356,7 +359,7 @@
                      in or not. -->
                 {#if !isLocal}
                     <button
-                        class="flex cursor-pointer items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent/10 disabled:opacity-50"
+                        class="flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-accent/10 disabled:opacity-50"
                         class:border-primary={inLibrary}
                         class:text-primary={inLibrary}
                         onclick={toggleLibrary}

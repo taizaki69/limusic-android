@@ -7,3 +7,7 @@
 import { browser } from '$app/environment';
 
 export const mobile = browser && /Android/i.test(navigator.userAgent);
+
+// Phone-only CSS keys off `.mobile` on <html> (the `mobile:` variant in layout.css), set here so it
+// is in place before the first paint.
+if (mobile) document.documentElement.classList.add('mobile');

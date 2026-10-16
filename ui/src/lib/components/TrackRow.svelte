@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { mobile } from '$lib/platform';
 	import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/svelte';
 	import {
 		FavouriteIcon,
@@ -333,7 +334,8 @@
 	<!-- Album rows only. Wide rows are mostly empty between the title and the duration, so it takes a
 	     centred column of its own there; narrow ones sit it next to the duration at its natural width
 	     rather than dropping it, since it never needs more than "1,234 plays" worth of room. -->
-	{#if song.play_count && showPlayCount && !compact}
+	<!-- Not on a phone, where the title needs every pixel the row has. -->
+	{#if song.play_count && showPlayCount && !compact && !mobile}
 		<div class="flex shrink-0 items-center justify-center text-xs text-muted-foreground lg:flex-1">
 			<span class="truncate">{t('library.play_count', { count: song.play_count })}</span>
 		</div>
@@ -385,9 +387,11 @@
 			     `focus-within`: a hidden element can't take focus, so the row (which is focusable) is
 			     what has to reveal it before Tab can reach it. -->
 			<div
-				class="flex items-center gap-0.5 {rated === 'indifferent'
-					? 'invisible group-focus-within:visible group-hover:visible'
-					: ''}"
+				class="flex items-center gap-0.5 {rated !== 'indifferent'
+					? ''
+					: mobile
+					? 'hidden'
+					: 'invisible group-focus-within:visible group-hover:visible'}"
 			>
 				{@render rateButton(ThumbsUpIcon, 'like', t('common.like'))}
 				{@render rateButton(ThumbsDownIcon, 'dislike', t('common.dislike'))}
@@ -424,7 +428,7 @@
 			{playlistId}
 			{queueIndex}
 			{inLibraryList}
-			triggerClass="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-accent/20 hover:text-foreground {compact
+			triggerClass="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-accent/20 hover:text-foreground {compact || mobile
 				? ''
 				: 'invisible group-focus-within:visible group-hover:visible'}"
 		/>

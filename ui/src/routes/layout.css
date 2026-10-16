@@ -21,6 +21,8 @@
    every hover: and group-hover: utility in the app. Redefine hover to fire on a real :hover
    regardless of the pointer heuristic. (This is a desktop app; hover always applies.) */
 @custom-variant hover (&:hover);
+/* The Android build: `.mobile` on <html> (platform.ts). */
+@custom-variant mobile (&:where(.mobile, .mobile *));
 
 /* `.theme-default` as well as :root, so the default palette can be put on an element the way the
    presets are. The Appearance tab's miniatures (`ThemeMock.svelte`) carry `theme-<id>` and `dark`
@@ -741,6 +743,26 @@ html.art-tint.theme-amoled {
 .card-grid > * {
 	content-visibility: auto;
 	contain-intrinsic-size: auto 12.75rem;
+}
+/* Phones: the fixed 10rem column leaves a 360px screen one card wide with half of it empty, so
+   the columns stretch to fill it instead. A stretched card is taller than the pinned row, so the
+   rows go back to auto and the cards back to always rendering: a phone's library is short. */
+.mobile .card-grid {
+	grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+	grid-auto-rows: auto;
+}
+.mobile .card-grid > * {
+	content-visibility: visible;
+}
+/* A tab row is wider than a phone; it scrolls on its own rather than widening the page. */
+.mobile [data-slot='tabs-list'] {
+	max-width: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
+	justify-content: flex-start;
+}
+.mobile [data-slot='tabs-trigger'] {
+	flex: none;
 }
 
 /* --- Moods & Genres tiles (search page) ---

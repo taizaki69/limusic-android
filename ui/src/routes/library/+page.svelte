@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
+	import { mobile } from '$lib/platform';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import {
 		Add01Icon,
@@ -152,9 +153,10 @@
 {/snippet}
 
 <div class="p-6">
-	<div class="mb-6 flex items-center justify-between">
+	<!-- Wraps on a phone: the title and the buttons are wider together than the screen. -->
+	<div class="mb-6 flex items-center justify-between {mobile ? 'flex-wrap gap-3' : ''}">
 		<h1 class="font-heading text-2xl font-bold">{t('library.title')}</h1>
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-2 {mobile ? 'flex-wrap' : ''}">
 			<!-- Only with something to push: saves made before signing in, which live on this
 			     machine until this button puts them on the account. -->
 			{#if auth.account?.signedIn && toSync.length}
@@ -206,7 +208,7 @@
 				onclick={() => openImport()}
 			>
 				<HugeiconsIcon icon={SpotifyIcon} class="h-4 w-4" /> {t('import.button')}
-				<ExperimentalBadge />
+				{#if !mobile}<ExperimentalBadge />{/if}
 			</Button>
 			<!-- Signed out too: a playlist can live on this machine with no account (#251). -->
 			<Button variant="outline" size="sm" class="gap-2" onclick={() => openNewPlaylist()}>

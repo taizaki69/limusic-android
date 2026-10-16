@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { mobile } from '$lib/platform';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { HistoryIcon, Search01Icon } from '@hugeicons/core-free-icons';
 	import SearchSuggest from '$lib/components/SearchSuggest.svelte';
@@ -91,10 +92,12 @@
 					class="shrink-0 rounded-full object-cover shadow-md"
 				/>
 			{/if}
-			<h1 class="truncate font-heading text-4xl font-bold tracking-tight drop-shadow-sm">
+			<h1 class="truncate font-heading {mobile ? 'text-3xl' : 'text-4xl'} font-bold tracking-tight drop-shadow-sm">
 				{daypart}{auth.account?.name ? `, ${auth.account.name.split(' ')[0]}` : ''}
 			</h1>
 		</div>
+		<!-- Not on a phone: the bottom navigation has Search and History, and there is no room. -->
+		{#if !mobile}
 		<div class="flex shrink-0 items-center gap-2">
 			<!-- Listen Together moved out of here and lives on the titlebar alone: history is the thing
 			     you reach for from the home page. -->
@@ -121,5 +124,6 @@
 				/>
 			</form>
 		</div>
+		{/if}
 	</div>
 </header>

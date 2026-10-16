@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { mobile } from '$lib/platform';
 	import { goto } from '$app/navigation';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import {
@@ -221,7 +222,7 @@
 			class="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/10"
 		></div>
 		<div class="relative max-w-3xl p-8">
-			<h1 class="font-heading text-5xl font-bold tracking-tight drop-shadow-lg">{artist.name}</h1>
+			<h1 class="font-heading {mobile ? 'text-3xl' : 'text-5xl'} font-bold tracking-tight drop-shadow-lg">{artist.name}</h1>
 			{#if artist.subscribers || artist.monthlyListeners}
 				<p class="mt-2 text-sm text-muted-foreground">
 					{#if artist.subscribers}{artist.subscribers}{/if}
@@ -240,7 +241,7 @@
 					{expanded ? t('common.less') : t('common.more')}
 				</button>
 			{/if}
-			<div class="mt-5 flex items-center gap-3">
+			<div class="mt-5 flex items-center gap-3 {mobile ? 'flex-wrap' : ''}">
 				<button
 					class="flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
 					onclick={shuffle}

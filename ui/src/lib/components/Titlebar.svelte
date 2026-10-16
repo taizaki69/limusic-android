@@ -310,7 +310,7 @@
 		</button>
 		{/if}
 
-		{#if win.chrome === 'off'}
+		{#if win.chrome === 'off' && !mobile}
 			<div class="mx-1.5 h-4 w-px bg-border"></div>
 
 			<!-- Minimize and maximize follow the desktop's button layout (#481). -->

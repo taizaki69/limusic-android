@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { mobile } from '$lib/platform';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
@@ -999,7 +1000,11 @@
 		<!-- One scroller for the whole page: the header scrolls away above the rows, same as the
 		     album page. -->
 		<div class="content-in min-h-0 flex-1 overflow-y-auto" {@attach sc.attach}>
-			<div class="relative flex min-h-[38vh] shrink-0 items-end gap-6 overflow-hidden border-b p-6">
+			<!-- Stacked on a phone, with the filter on its own row on top: side by side, the cover leaves
+			     the title a word a line and the filter sits on top of it. -->
+			<div class="relative flex shrink-0 overflow-hidden border-b p-6 {mobile
+				? 'flex-col items-start gap-4 pt-4'
+				: 'min-h-[38vh] items-end gap-6'}">
 				<!-- The backdrop and its fade share one layer (`art-wash` on the wrapper): see HomeHero. -->
 				<div class="art-wash pointer-events-none absolute inset-0 overflow-hidden">
 					{#if backdrop}
@@ -1060,7 +1065,7 @@
 							</button>
 						{/if}
 					</div>
-					<h1 class="mt-1 font-heading text-4xl font-bold tracking-tight drop-shadow-lg">
+					<h1 class="mt-1 font-heading {mobile ? 'text-2xl' : 'text-4xl'} font-bold tracking-tight drop-shadow-lg">
 						{pl.title ?? t('common.playlist_singular')}
 					</h1>
 					{#if subtitle}<p class="mt-2 text-sm text-muted-foreground">{subtitle}</p>{/if}
@@ -1080,7 +1085,7 @@
 							{/if}
 						</div>
 					{/if}
-					<div class="mt-4 flex items-center justify-between gap-2">
+					<div class="mt-4 flex items-center justify-between gap-2 {mobile ? 'flex-wrap' : ''}">
 						<div class="flex items-center gap-2">
 							<Button
 								class="gap-2"
@@ -1128,7 +1133,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="absolute right-6 top-6">
+				<div class={mobile ? 'relative order-first w-full' : 'absolute right-6 top-6'}>
 					<TrackFilter
 						bind:value={query}
 						placeholder={t('common.search_this_playlist')}
